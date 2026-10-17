@@ -2,4 +2,4 @@
 
 set -xe
 
-pytest -vv --cov=fastapi_skeleton --cov=tests --cov-report=term-missing --cov-report=xml tests/ ${@}
+pytest -vv --cov=app --cov=tests --cov-report=term-missing --cov-report=xml tests/ ${@}

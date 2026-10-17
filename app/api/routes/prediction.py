@@ -3,10 +3,10 @@ from starlette.requests import Request
 
 from app.core import security
 from app.core.logging import logger
+from app.core.metrics import record_prediction
 from app.models.payload import TextPayload
 from app.models.prediction import PredictionResponse
-from app.services.model_service import predict
-
+from app.services.model_service import ModelError, ModelNotLoadedError, predict
 
 router = APIRouter()
 
@@ -27,13 +27,13 @@ def post_predict(
     authenticated: bool = Depends(security.validate_request),
 ) -> PredictionResponse:
     """
-    ### Predict Sentiment  
+    ### Predict Sentiment
     This endpoint runs the ML model to classify sentiment on input text.
 
-    - **Auth:** Requires API Key / JWT depending on your config  
-    - **Input:** TextPayload (`text: str`)  
-    - **Output:** PredictionResponse (`sentiment`, `confidence`)  
-    - **Errors:** 401 (unauthorized), 500 (model failure)
+    - **Auth:** Requires API Key in header (`token: <API_KEY>`)
+    - **Input:** TextPayload (`text: str`)
+    - **Output:** PredictionResponse (`sentiment`, `confidence`)
+    - **Errors:** 401 (unauthorized), 422 (validation error), 503 (model unavailable)
     """
 
     if not authenticated:
@@ -42,14 +42,16 @@ def post_predict(
             detail="Invalid authentication credentials.",
         )
 
-    logger.info(f"Received prediction request from: {request.client.host}")
+    client_host = security.get_client_ip(request)
+    logger.info(f"Received prediction request from client: {client_host}")
 
     try:
         result = predict(payload.text)
+        record_prediction()
 
         response = PredictionResponse(
             sentiment=result["sentiment"],
-            confidence=result["confidence"]
+            confidence=result["confidence"],
         )
 
         logger.info(
@@ -59,9 +61,23 @@ def post_predict(
 
         return response
 
-    except Exception as e:
-        logger.error(f"Prediction error: {str(e)}")
+    except ModelNotLoadedError as mnle:
+        logger.warning(f"Inference rejected because model is unavailable: {mnle}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(mnle),
+        ) from mnle
+
+    except ModelError as me:
+        logger.error(f"Prediction execution error: {me}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Prediction failed. Check model or input data.",
-        )
+            detail="Model prediction failed. Check input data or model configuration.",
+        ) from me
+
+    except Exception as e:
+        logger.error(f"Unexpected prediction failure: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An internal error occurred during prediction.",
+        ) from e

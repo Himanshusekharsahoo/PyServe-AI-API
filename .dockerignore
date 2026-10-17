@@ -1,0 +1,43 @@
+# Version Control & Git
+.git/
+.gitignore
+.gitattributes
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing & Quality Gates
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+tests/
+.flake8
+
+# Development & Training scripts
+scripts/
+
+# Secrets & Environment configuration files
+.env
+.env.*
+!.env.example
+
+# Documentation & Logs
+*.log
+*.tmp
+MODEL_SPEC.md
+
+# IDE & OS metadata
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

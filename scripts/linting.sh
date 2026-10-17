@@ -4,12 +4,10 @@ set -xe
 
 isort .
 
-mypy --install-types --non-interactive fastapi_skeleton/
+mypy app tests scripts
 
-mypy fastapi_skeleton
+black --check app tests scripts
 
-black fastapi_skeleton --line-length 88
+flake8 app tests scripts
 
-flake8 fastapi_skeleton
-
-bandit -r fastapi_skeleton/
+bandit -r app/
